@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="A cool thing made with Glitch"/>
+
+    <meta name="theme-color" content="#000"/>
+
+    <title>On-Air ATEM Camera displayer</title>
+
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<div class="rows">
+    <div class="columns">
+        <div class="cell">
+            <button id="cam1-control">1</button>
+        </div>
+        <div class="cell">
+            <button id="cam2-control">2</button>
+        </div>
+        <div class="cell">
+            <button id="cam3-control">3</button>
+        </div>
+    </div>
+    <div class="columns">
+        <div class="cell">
+            <button id="cut">CUT</button>
+        </div>
+        <div class="cell">
+            <button id="delayed-cut">DELAYED CUT</button>
+        </div>
+        <div class="cell">
+            <button id="blind-cut">BLIND CUT</button>
+        </div>
+    </div>
+    <div class="columns">
+        <div class="cell">
+            <button id="cam1-status">🤔 1</button>
+        </div>
+        <div class="cell">
+            <button id="cam2-status">🤔 2</button>
+        </div>
+        <div class="cell">
+            <button id="cam3-status">🤔 3</button>
+        </div>
+    </div>
+</div>
+
+<style>
+
+    html {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    body {
+        margin: 0;
+        font-family: sans-serif;
+        height: 100%;
+    }
+
+    button {
+        background: #eee;
+        border: 5px solid #eee;
+        padding: 5px 10px;
+        border-radius: 5px;
+        width: 100%;
+        font-weight: bold;
+        height: 100%;
+    }
+
+    .columns, .rows {
+        display: flex;
+    }
+
+    .columns {
+        flex-direction: row;
+        width: 100%;
+    }
+
+    .rows {
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .rows, .cell, .columns {
+        flex: 1;
+    }
+
+    .cell {
+        padding: 10px;
+    }
+
+    .preview {
+        background: limegreen;
+        color: white;
+    }
+
+    .program, .preview.program {
+        background: red;
+        color: white;
+    }
+
+    .light {
+        border: 5px solid red;
+    }
+
+    .status.ping, .status.wip {
+        background: orange;
+        border-color: orange;
+        color: white;
+    }
+
+    .status.issue {
+        background: red;
+        border-color: red;
+        color: white;
+    }
+
+</style>
+
+<script>
+    let camera1ControlButton = document.querySelector("#cam1-control");
+    let camera2ControlButton = document.querySelector("#cam2-control");
+    let camera3ControlButton = document.querySelector("#cam3-control");
+
+    let camera1StatusButton = document.querySelector("#cam1-status");
+    let camera2StatusButton = document.querySelector("#cam2-status");
+    let camera3StatusButton = document.querySelector("#cam3-status");
+
+
+    let cutButton = document.querySelector("#cut");
+    let delayedCutButton = document.querySelector("#delayed-cut");
+    let blindCutButton = document.querySelector("#blind-cut");
+
+    let previewBus = 0;
+    let lightBus = 0;
+    let programBus = 0;
+
+    let cameraStatuses = {}
+
+    function render() {
+
+        camera1ControlButton.setAttribute("class", "")
+        camera2ControlButton.setAttribute("class", "")
+        camera3ControlButton.setAttribute("class", "")
+
+        if (previewBus === 1) {
+            camera1ControlButton.classList.add("preview");
+        }
+        if (previewBus === 2) {
+            camera2ControlButton.classList.add("preview");
+        }
+        if (previewBus === 3) {
+            camera3ControlButton.classList.add("preview");
+        }
+
+        if (programBus === 1) {
+            camera1ControlButton.classList.add("program");
+        }
+        if (programBus === 2) {
+            camera2ControlButton.classList.add("program");
+        }
+        if (programBus === 3) {
+            camera3ControlButton.classList.add("program");
+        }
+
+        if (lightBus === 1) {
+            camera1ControlButton.classList.add("light");
+        }
+        if (lightBus === 2) {
+            camera2ControlButton.classList.add("light");
+        }
+        if (lightBus === 3) {
+            camera3ControlButton.classList.add("light");
+        }
+
+
+        camera1ControlButton.onclick = () => {
+            socket.emit("changePreview", 1)
+        }
+        camera2ControlButton.onclick = () => {
+            socket.emit("changePreview", 2)
+        }
+        camera3ControlButton.onclick = () => {
+            socket.emit("changePreview", 3)
+        }
+
+        cutButton.onclick = () => {
+            socket.emit("cut")
+        }
+        delayedCutButton.onclick = () => {
+            socket.emit("delayedCut")
+        }
+        blindCutButton.onclick = () => {
+            socket.emit("blindCut")
+        }
+
+        let cameraButtonClasses = {
+            OK: "status ok",
+            ISSUE: "status issue",
+            WIP: "status wip",
+            PING: "status ping"
+        }
+
+        if ("1" in cameraStatuses) {
+            camera1StatusButton.style.display = "";
+            camera1StatusButton.setAttribute("class", cameraButtonClasses[cameraStatuses["1"]]);
+            camera1StatusButton.textContent = cameraStatuses["1"];
+            camera1StatusButton.ondblclick = () => {
+                const camera = 1;
+                switch (cameraStatuses["1"]) {
+                    case "OK":
+                        return socket.emit("updateCameraStatus", {camera, status: "ISSUE"});
+                    case "ISSUE":
+                        return socket.emit("updateCameraStatus", {camera, status: "OK"});
+                    case "WIP":
+                        return socket.emit("updateCameraStatus", {camera, status: "PING"});
+                    case "PING":
+                        return socket.emit("updateCameraStatus", {camera, status: "PING"});
+
+                }
+            }
+        } else {
+            camera1StatusButton.style.display = "none";
+        }
+
+        if ("2" in cameraStatuses) {
+            camera2StatusButton.style.display = "";
+            camera2StatusButton.setAttribute("class", cameraButtonClasses[cameraStatuses["2"]]);
+            camera2StatusButton.textContent = cameraStatuses["2"];
+            camera2StatusButton.ondblclick = () => {
+                const camera = 2;
+                switch (cameraStatuses["2"]) {
+                    case "OK":
+                        return socket.emit("updateCameraStatus", {camera, status: "ISSUE"});
+                    case "ISSUE":
+                        return socket.emit("updateCameraStatus", {camera, status: "OK"});
+                    case "WIP":
+                        return socket.emit("updateCameraStatus", {camera, status: "PING"});
+                    case "PING":
+                        return socket.emit("updateCameraStatus", {camera, status: "PING"});
+
+                }
+            }
+        } else {
+            camera2StatusButton.style.display = "none";
+        }
+
+        if ("3" in cameraStatuses) {
+            camera3StatusButton.style.display = "";
+            camera3StatusButton.setAttribute("class", cameraButtonClasses[cameraStatuses["3"]]);
+            camera3StatusButton.textContent = cameraStatuses["3"];
+            camera3StatusButton.ondblclick = () => {
+                const camera = 3;
+                switch (cameraStatuses["3"]) {
+                    case "OK":
+                        return socket.emit("updateCameraStatus", {camera, status: "ISSUE"});
+                    case "ISSUE":
+                        return socket.emit("updateCameraStatus", {camera, status: "OK"});
+                    case "WIP":
+                        return socket.emit("updateCameraStatus", {camera, status: "PING"});
+                    case "PING":
+                        return socket.emit("updateCameraStatus", {camera, status: "PING"});
+
+                }
+            }
+        } else {
+            camera3StatusButton.style.display = "none";
+        }
+
+    }
+
+    let socket = io();
+
+    socket.on("programChanged", payload => {
+        programBus = Number(payload);
+        render();
+    });
+
+    socket.on("lightChanged", payload => {
+        lightBus = Number(payload);
+        render();
+    });
+
+    socket.on("previewChanged", payload => {
+        previewBus = Number(payload);
+        render();
+    });
+
+    socket.on("cameraStatusChanged", ({camera, status}) => {
+        cameraStatuses[camera] = status;
+        render();
+    });
+
+    render();
+</script>
+</body>
+</html>

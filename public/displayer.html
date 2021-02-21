@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="A cool thing made with Glitch" />
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="A cool thing made with Glitch"/>
 
-    <meta name="theme-color" content="#000" />
+    <meta name="theme-color" content="#000"/>
 
-    <title>On-Air ATEM Camera display</title>
+    <title>On-Air ATEM Camera displayer</title>
 
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -90,9 +90,7 @@
             right.style.opacity = 0;
         }
 
-        window.location.hash = programBus;
-
-        body.ondblclick = function() {
+        body.ondblclick = function () {
             let newCameraNumber = Number(
                 prompt("Enter camera number", cameraNumber)
             );
@@ -108,7 +106,7 @@
             render();
         };
 
-        body.onclick = function() {
+        body.onclick = function () {
             programBus = (programBus % 3) + 1;
 
             render();
@@ -117,25 +115,11 @@
 
     let socket = io();
 
-    // const events = [
-    //     "previewBus",
-    //     "programBus",
-    //     "inputTally",
-    //     "sourceTally",
-    //     "sourceConfiguration",
-    //     "auxiliaryOutput",
-    //     "connectionStateChange",
-    //     "connectionLost"
-    // ];
+    socket.on("lightChanged", payload => {
+        programBus = Number(payload);
 
-    // for (let event of events) {
-        socket.on("programBus", payload => {
-            programBus = Number(payload);
-            // console.log({ event, payload });
-
-            render();
-        });
-    // }
+        render();
+    });
 
     render();
 </script>

@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "applest-atem": "^0.2.4",
     "atem": "^0.1.8",
     "express": "^4.17.1",
     "socket.io": "^3.0.4"

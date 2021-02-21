@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="A cool thing made with Glitch"/>
+
+    <meta name="theme-color" content="#000"/>
+
+    <title>On-Air ATEM Camera displayer</title>
+
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<button class="start">Démarrer</button>
+
+<div class="app">
+
+    <div class="camera" data-camera="1">
+        <h2>Caméra 1 <span class="on-air">(en direct)</span></h2>
+        <h3 class="issue">Intervention demandée</h3>
+        <h3 class="ping">Caméra disponible ?</h3>
+
+        <button class="wip">Signaler intervention</button>
+        <button class="ok">Signaler comme réglé</button>
+
+        <hr/>
+    </div>
+
+    <div class="camera" data-camera="2">
+        <h2>Caméra 2 <span class="on-air">(en direct)</span></h2>
+        <h3 class="issue">Intervention demandée</h3>
+        <h3 class="ping">Caméra disponible ?</h3>
+
+        <button class="wip">Signaler intervention</button>
+        <button class="ok">Signaler comme réglé</button>
+
+        <hr/>
+    </div>
+
+    <div class="camera" data-camera="3">
+        <h2>Caméra 3 <span class="on-air">(en direct)</span></h2>
+        <h3 class="issue">Intervention demandée</h3>
+        <h3 class="ping">Caméra disponible ?</h3>
+
+        <button class="wip">Signaler intervention</button>
+        <button class="ok">Signaler comme réglé</button>
+    </div>
+
+
+</div>
+
+<style>
+    @import url("https://fonts.googleapis.com/css2?family=Lato&display=swap");
+
+    html {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    body {
+        margin: 0;
+        font-family: sans-serif;
+        text-align: center;
+    }
+
+    table {
+        width: 100%;
+    }
+
+    button {
+        background: #eee;
+        padding: 10px 15px;
+        border-radius: 5px;
+        border: 0;
+        font-weight: bold;
+    }
+
+    hr {
+        margin: 40px 0;
+    }
+
+    .ok {
+        color: white;
+        background: orange;
+    }
+
+    .wip {
+    }
+
+    .issue {
+        color: red;
+    }
+
+    .ping {
+        color: orange;
+    }
+
+    .on-air {
+        color: red;
+    }
+
+</style>
+
+<script>
+    let socket = io();
+
+    let audios = {
+        PING: {
+            1: new Audio("./static/PING-1.ogg"),
+            2: new Audio("./static/PING-2.ogg"),
+            3: new Audio("./static/PING-3.ogg"),
+        },
+        ISSUE: {
+            1: new Audio("./static/ISSUE-1.ogg"),
+            2: new Audio("./static/ISSUE-2.ogg"),
+            3: new Audio("./static/ISSUE-3.ogg"),
+        }
+    }
+
+    let audioQueue = [];
+
+    function dequeueAudio() {
+        const audio = audioQueue.pop()
+        let delay = 250;
+        if (audio) {
+            delay = audio.duration * 1000
+            audio.play()
+        }
+        setTimeout(dequeueAudio, delay)
+    }
+
+    let cameraStatuses = {}
+    let programBus = 0;
+
+    let initialized = false;
+
+
+    function render() {
+
+        document.querySelector(".start").onclick = () => {
+            if (!initialized) {
+                setTimeout(dequeueAudio, 0)
+                initialized = true;
+            }
+            render();
+        }
+
+        document.querySelector(".start").style.display = !initialized ? "" : "none"
+        document.querySelector(".app").style.display = initialized ? "" : "none"
+
+
+        for (let cameraWrapper of document.querySelectorAll(".camera")) {
+
+            const camera = Number(cameraWrapper.getAttribute("data-camera"));
+
+            let cameraExists = camera in cameraStatuses;
+            cameraWrapper.style.display = cameraExists ? "" : "none";
+            if (!cameraWrapper) {
+                break;
+            }
+
+            const cameraStatus = cameraStatuses[camera];
+
+            cameraWrapper.querySelector(".on-air").style.display = camera === programBus ? "" : "none";
+
+            cameraWrapper.querySelector(".issue").style.display = cameraStatus === "ISSUE" ? "" : "none";
+            cameraWrapper.querySelector(".ping").style.display = cameraStatus === "PING" ? "" : "none";
+            cameraWrapper.querySelector(".wip").style.display = ["OK", "ISSUE"].includes(cameraStatus) ? "" : "none";
+            cameraWrapper.querySelector(".ok").style.display = !["OK", "ISSUE"].includes(cameraStatus) ? "" : "none";
+
+            cameraWrapper.querySelector(".wip").onclick = () => {
+                socket.emit("updateCameraStatus", {camera, status: "WIP"})
+            }
+
+            cameraWrapper.querySelector(".ok").onclick = () => {
+                socket.emit("updateCameraStatus", {camera, status: "OK"})
+            }
+
+        }
+
+
+    }
+
+    socket.on("programChanged", payload => {
+        programBus = Number(payload);
+        render();
+    });
+
+    socket.on("cameraStatusChanged", ({camera, status}) => {
+        cameraStatuses[camera] = status;
+        if (status in audios && camera in audios[status]) {
+            audioQueue.push(audios[status][camera]);
+        }
+
+        render();
+    });
+
+    render();
+</script>
+</body>
+</html>
