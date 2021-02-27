@@ -10,9 +10,8 @@ const io = require("socket.io")(http, {
 
 const EventEmitter = require('events');
 
-const fakeAtem = new EventEmitter(); // todo rm
 
-const atemAddress = "192.168.1.140";
+const atemAddress = "192.168.1.240";
 const serverPort = 7000;
 
 let atem = new ATEM();
@@ -33,17 +32,19 @@ function broadcast(eventName, eventPayload = undefined, ack = () => {
 let programBus, lightBus, previewBus;
 
 atem.on('stateChanged', function(err, state) {
-    console.log(state); // catch the ATEM state.
 
-    // todo
-    // broadcast("programChanged", programBus);
-    // broadcast("previewChanged", programBus);
+    programBus = state.tallys.findIndex(tally => [1,3].includes(tally)) + 1
+    previewBus = state.tallys.findIndex(tally => [2,3].includes(tally)) + 1
+
+    broadcast("programChanged", programBus);
+    broadcast("previewChanged", previewBus);
+
+    if(!lightBus) {
+        lightBus = programBus;
+        broadcast("lightChanged", lightBus);
+    }
 });
 
-// todo: set initial state with "atem.state"
-programBus = 1
-lightBus = 1
-previewBus = 2
 
 let cameraStatuses = {
     1: "OK",
@@ -51,26 +52,12 @@ let cameraStatuses = {
     3: "OK",
 }
 
-fakeAtem.on("programBus", function (_programBus) { // todo rm
-    programBus = _programBus;
-    broadcast("programChanged", _programBus);
-});
-
-fakeAtem.on("previewBus", function (_previewBus) { // todo rm
-    previewBus = _previewBus
-    broadcast("previewChanged", _previewBus);
-});
-
 function changePreview(previewBus) {
-    // todo sth with atem
-    // atem.changePreviewInput(previewBus);
-    fakeAtem.emit('previewBus', previewBus) // todo: rm
+    atem.changePreviewInput(previewBus);
 }
 
 function changeProgram(programBus) {
-    // todo sth with atem
-    // atem.changeProgramInput(programBus);
-    fakeAtem.emit('programBus', programBus) //todo: rm
+    atem.changeProgramInput(programBus);
 }
 
 function changeLight(_lightBus) {
