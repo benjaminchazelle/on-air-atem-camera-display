@@ -109,6 +109,9 @@
 <script>
     let socket = io();
 
+    let videoOverridding = false;
+
+
     let audios = {
         PING: {
             1: new Audio("./static/PING-1.ogg"),
@@ -166,7 +169,13 @@
 
             const cameraStatus = cameraStatuses[camera];
 
+
             cameraWrapper.querySelector(".on-air").style.display = camera === programBus ? "" : "none";
+
+            cameraWrapper.querySelector(".on-air").textContent = videoOverridding ? "(bientôt en direct)" : "(en direct)"
+
+            cameraWrapper.querySelector(".on-air").style.color = videoOverridding ? "blueviolet" : "red"
+
 
             cameraWrapper.querySelector(".issue").style.display = cameraStatus === "ISSUE" ? "" : "none";
             cameraWrapper.querySelector(".ping").style.display = cameraStatus === "PING" ? "" : "none";
@@ -188,6 +197,11 @@
 
     socket.on("programChanged", payload => {
         programBus = Number(payload);
+        render();
+    });
+
+    socket.on("videoOverrided", payload => {
+        videoOverridding = payload;
         render();
     });
 

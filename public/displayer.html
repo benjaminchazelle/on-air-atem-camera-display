@@ -50,11 +50,11 @@
     let right = document.querySelector(".right");
     let body = document.body;
 
-    let cameraNumber = localStorage.getItem("cameraNumber") || 1;
+    let cameraNumber = Number(localStorage.getItem("cameraNumber") || 1);
     let programBus = 3;
 
     function isOnAir() {
-        return cameraNumber == programBus;
+        return cameraNumber === programBus;
     }
 
     function render() {

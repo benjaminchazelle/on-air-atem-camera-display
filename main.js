@@ -1,15 +1,13 @@
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
-const ATEM = require('applest-atem');
+// const ATEM = require('applest-atem');
+const ATEM = require('./atemMocker');
 const io = require("socket.io")(http, {
     cors: {
         origin: "*"
     }
 });
-
-const EventEmitter = require('events');
-
 
 const atemAddress = "192.168.1.240";
 const serverPort = 7000;
@@ -29,21 +27,26 @@ function broadcast(eventName, eventPayload = undefined, ack = () => {
     }
 }
 
-let programBus, lightBus, previewBus;
+let programBus, futurProgramBus, lightBus, previewBus;
 
 atem.on('stateChanged', function(err, state) {
 
     programBus = state.tallys.findIndex(tally => [1,3].includes(tally)) + 1
     previewBus = state.tallys.findIndex(tally => [2,3].includes(tally)) + 1
 
-    broadcast("programChanged", programBus);
+    broadcast("programChanged", futurProgramBus || programBus);
     broadcast("previewChanged", previewBus);
+    broadcast("videoOverrided", programBus === 4);
 
     if(!lightBus) {
-        lightBus = programBus;
+        lightBus = futurProgramBus || programBus;
         broadcast("lightChanged", lightBus);
     }
 });
+
+atem.changePreviewInput(1)
+atem.changeProgramInput(1)
+atem.changeTodoKey(false)
 
 
 let cameraStatuses = {
@@ -56,8 +59,12 @@ function changePreview(previewBus) {
     atem.changePreviewInput(previewBus);
 }
 
-function changeProgram(programBus) {
-    atem.changeProgramInput(programBus);
+function changeProgram(_programBus, force) {
+    if(force || programBus !== 4) {
+        atem.changeProgramInput(_programBus);
+    } else {
+        futurProgramBus = _programBus
+    }
 }
 
 function changeLight(_lightBus) {
@@ -80,11 +87,11 @@ io.on("connection", socket => {
 
     socket.on("cut", () => {
         const nextProgramBus = previewBus;
-        const nextPreviewBus = programBus;
+        const nextPreviewBus = futurProgramBus || programBus;
         changeLight(previewBus)
         clearTimeout(cutTimeout)
         cutTimeout = setTimeout(() => {
-            changeProgram(nextProgramBus)
+            changeProgram(nextProgramBus, false)
             changePreview(nextPreviewBus)
         }, 0);
     });
@@ -94,20 +101,41 @@ io.on("connection", socket => {
         changeLight(previewBus)
         clearTimeout(cutTimeout)
         cutTimeout = setTimeout(() => {
-            const nextPreviewBus = previewBus === oldPreviewBus ? programBus : previewBus;
-            changeProgram(oldPreviewBus)
+            const nextPreviewBus = previewBus === oldPreviewBus ? (futurProgramBus || programBus) : previewBus;
+            changeProgram(oldPreviewBus, false)
             changePreview(nextPreviewBus)
-        }, 1500);
+        }, 500);
     });
 
     socket.on("blindCut", () => {
         const nextProgramBus = previewBus;
-        const nextPreviewBus = programBus;
+        const nextPreviewBus = futurProgramBus || programBus;
         clearTimeout(cutTimeout)
         cutTimeout = setTimeout(() => {
-            changeProgram(nextProgramBus)
+            changeProgram(nextProgramBus, false)
             changePreview(nextPreviewBus)
         }, 0);
+    });
+
+    socket.on("toggleVideoOverriding", () => {
+        videoOverridding = programBus === 4
+
+        if(videoOverridding) {
+            clearTimeout(cutTimeout)
+            cutTimeout = setTimeout(() => {
+                atem.changeTodoKey(true)
+                changeProgram(futurProgramBus, true)
+                futurProgramBus = null;
+            }, 0);
+
+        } else {
+            futurProgramBus = programBus;
+            clearTimeout(cutTimeout)
+            cutTimeout = setTimeout(() => {
+                changeProgram(4, true)
+                atem.changeTodoKey(false)
+            }, 0);
+        }
     });
 
     socket.on("updateCameraStatus", ({camera, status}) => {
@@ -130,9 +158,10 @@ io.on("connection", socket => {
         }
     });
 
-    socket.emit("programChanged", programBus);
+    socket.emit("programChanged", futurProgramBus || programBus);
     socket.emit("lightChanged", lightBus);
     socket.emit("previewChanged", previewBus);
+    socket.emit("videoOverrided", programBus === 4);
     for(let camera of Object.keys(cameraStatuses)) {
         socket.emit("cameraStatusChanged", {camera, status: cameraStatuses[camera] });
     }
@@ -140,7 +169,7 @@ io.on("connection", socket => {
 });
 
 http.listen(serverPort, () => {
-    console.log(`Server port : ${serverPort}`);
-    console.log(`ATEM IP : ${atemAddress}`);
+    console.info(`Server port : ${serverPort}`);
+    console.info(`ATEM IP : ${atemAddress}`);
 });
 
