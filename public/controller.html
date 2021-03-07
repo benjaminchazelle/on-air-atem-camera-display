@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
@@ -189,6 +189,18 @@
         camera3ControlButton.onclick = () => {
             socket.emit("changePreview", 3)
         }
+
+/*
+        camera1ControlButton.ondblclick = () => {
+            socket.emit("changeLight", 1)
+        }
+        camera2ControlButton.ondblclick = () => {
+            socket.emit("changeLight", 2)
+        }
+        camera3ControlButton.ondblclick = () => {
+            socket.emit("changeLight", 3)
+        }
+*/
 
         cutButton.onclick = () => {
             socket.emit("cut")

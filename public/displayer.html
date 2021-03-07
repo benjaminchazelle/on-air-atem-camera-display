@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
@@ -54,7 +54,7 @@
     let programBus = 3;
 
     function isOnAir() {
-        return cameraNumber === programBus;
+        return cameraNumber == programBus;
     }
 
     function render() {
@@ -95,11 +95,14 @@
                 prompt("Enter camera number", cameraNumber)
             );
 
-            if ([1, 2, 3, 4].includes(newCameraNumber)) {
+
+
+            if (![1, 2, 3, 4].includes(newCameraNumber)) {
                 return;
             } else {
                 cameraNumber = newCameraNumber;
             }
+
 
             localStorage.setItem("cameraNumber", cameraNumber);
 

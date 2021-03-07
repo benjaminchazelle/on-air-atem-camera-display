@@ -74,6 +74,10 @@ io.on("connection", socket => {
         changePreview(previewBus)
     });
 
+    socket.on("changeLight", (lightBus) => {
+        changeLight(lightBus)
+    });
+
     socket.on("cut", () => {
         const nextProgramBus = previewBus;
         const nextPreviewBus = programBus;
