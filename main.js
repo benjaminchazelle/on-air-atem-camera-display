@@ -1,8 +1,8 @@
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
-// const ATEM = require('applest-atem');
-const ATEM = require('./atemMocker');
+const ATEM = require('applest-atem');
+// const ATEM = require('./atemMocker');
 const io = require("socket.io")(http, {
     cors: {
         origin: "*"
@@ -13,7 +13,15 @@ const atemAddress = "192.168.1.240";
 const serverPort = 7000;
 
 let atem = new ATEM();
+
+atem.on('connect', function() {
+	atem.changePreviewInput(1)
+	atem.changeProgramInput(1)
+	 atem.changeUpstreamKeyState(0, true);
+});
+
 atem.connect(atemAddress);
+
 
 app.use(express.static("public"));
 
@@ -43,11 +51,6 @@ atem.on('stateChanged', function(err, state) {
         broadcast("lightChanged", lightBus);
     }
 });
-
-atem.changePreviewInput(1)
-atem.changeProgramInput(1)
-atem.changeTodoKey(false)
-
 
 let cameraStatuses = {
     1: "OK",
@@ -123,7 +126,7 @@ io.on("connection", socket => {
         if(videoOverridding) {
             clearTimeout(cutTimeout)
             cutTimeout = setTimeout(() => {
-                atem.changeTodoKey(true)
+                atem.changeUpstreamKeyState(0, true)
                 changeProgram(futurProgramBus, true)
                 futurProgramBus = null;
             }, 0);
@@ -133,7 +136,7 @@ io.on("connection", socket => {
             clearTimeout(cutTimeout)
             cutTimeout = setTimeout(() => {
                 changeProgram(4, true)
-                atem.changeTodoKey(false)
+                atem.changeUpstreamKeyState(0, false)
             }, 0);
         }
     });
@@ -169,7 +172,7 @@ io.on("connection", socket => {
 });
 
 http.listen(serverPort, () => {
+
     console.info(`Server port : ${serverPort}`);
     console.info(`ATEM IP : ${atemAddress}`);
 });
-
